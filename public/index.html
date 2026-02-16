@@ -10,10 +10,42 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
-        .aix-gradient { background: linear-gradient(135deg, #E31837 0%, #FF6F00 100%); }
-        .scenario-card { transition: all 0.2s ease; border-left: 4px solid transparent; }
-        .scenario-card:hover { transform: translateY(-2px); border-left: 4px solid #E31837; }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6; 
+            margin: 0;
+        }
+
+        /* Air India Express Gradient */
+        .aix-gradient { 
+            background: linear-gradient(135deg, #E31837 0%, #FF6F00 100%); 
+        }
+
+        .scenario-card { 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            border-left: 4px solid transparent;
+        }
+        
+        .scenario-card:hover { 
+            transform: translateY(-4px); 
+            border-left: 4px solid #E31837;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .animate-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -22,9 +54,9 @@
         const { useState, useEffect } = React;
 
         const SCENARIOS = {
-            "Booking": [
+            "Booking Scenarios": [
                 { id: "ow_1a", label: "Oneway - 1 Adult", amount: "10545", currency: "USD", desc: "Basic BSP Payment Flow" },
-                { id: "ow_mixed", label: "Oneway - 1 Adult, 1 Senior, 1 Infant", amount: "18500", currency: "USD", desc: "Mixed Passenger Types" },
+                { id: "ow_mixed", label: "Oneway - 1 Adult, 1 Senior, 1 Infant", amount: "18500", currency: "USD", desc: "Mixed Pax Types for IFG" },
                 { id: "ow_conn", label: "Oneway Connecting - 2 Adult", amount: "22400", currency: "USD", desc: "Multi-segment Connectivity" },
                 { id: "ow_int_addon", label: "Oneway Int - 3 Adult, 1 Infant, Addon", amount: "55000", currency: "USD", desc: "High Value + Ancillary Services" },
                 { id: "ow_dom_addon", label: "Oneway Domestic - 3 Adult, 1 Infant, Addon", amount: "12000", currency: "INR", desc: "Domestic Market BSP" },
@@ -34,15 +66,33 @@
                 { id: "multi_1a", label: "Multicity - 1 Adult", amount: "19500", currency: "USD", desc: "Complex PNR Routing" },
                 { id: "multi_2a", label: "Multicity - 2 Adult", amount: "35000", currency: "USD", desc: "Multi-Pax / Multi-City" }
             ],
-            "Modification": [
+            "Modification Scenarios": [
                 { id: "mod_ow", label: "Oneway - 1 Adult Booking (Mod)", amount: "2500", currency: "USD", desc: "Change Fee Payment via IFG" },
                 { id: "mod_rt", label: "Roundtrip - 4 Adult (2 Adult Mod)", amount: "5600", currency: "USD", desc: "Partial Group Modification" }
             ],
-            "Refunds": [
+            "Refunds & Voids": [
                 { id: "ref_partial", label: "Partial Refund", amount: "10545", currency: "USD", desc: "IFG Partial Reversal Demo" },
                 { id: "ref_full", label: "Full Refund", amount: "10545", currency: "USD", desc: "Full BSP Void/Refund" }
             ]
         };
+
+        const Header = () => (
+            <div className="sticky-header">
+                <div className="max-w-[1920px] mx-auto flex items-center justify-between px-6 py-3">
+                    <img 
+                        src="https://www.airindiaexpress.com/content/dam/airindiaexpress/aix-logo.svg" 
+                        alt="Air India Express" 
+                        className="h-10 md:h-12"
+                    />
+                    <div className="hidden md:flex gap-6 text-[13px] font-bold text-gray-600 uppercase tracking-wider">
+                        <span>Book</span>
+                        <span>Manage</span>
+                        <span>Check-in</span>
+                        <span className="text-[#E31837]">IFG Demo</span>
+                    </div>
+                </div>
+            </div>
+        );
 
         function App() {
             const [loading, setLoading] = useState(false);
@@ -57,57 +107,69 @@
                         body: JSON.stringify(scenario)
                     });
                     const data = await response.json();
+                    // Using redirect instead of iframe for cleaner BSP demo
                     window.location.href = data.url;
                 } catch (e) {
-                    alert("Failed to create session");
+                    alert("Failed to create Secure Session");
                     setLoading(false);
                 }
             };
 
             if (status === 'success') return (
-                <div className="min-h-screen flex items-center justify-center p-6">
-                    <div className="max-w-md w-full bg-white shadow-2xl rounded-2xl p-8 text-center border-t-8 border-green-500">
-                        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">✓</div>
-                        <h1 className="text-2xl font-bold text-gray-800 mb-2">IFG Payment Authorized</h1>
-                        <p className="text-gray-500 mb-8">The BSP transaction was successfully processed through the IATA Financial Gateway.</p>
-                        <button onClick={() => window.location.href='/'} className="w-full py-3 aix-gradient text-white font-bold rounded-xl">Return to Portal</button>
+                <div className="min-h-screen flex flex-col">
+                    <Header />
+                    <div className="flex-1 flex items-center justify-center p-6 bg-gray-50">
+                        <div className="max-w-md w-full bg-white shadow-2xl rounded-3xl p-10 text-center animate-in border-b-8 border-green-500">
+                            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">✓</div>
+                            <h1 className="text-2xl font-extrabold text-gray-800 mb-2">IFG Payment Authorized</h1>
+                            <p className="text-gray-500 mb-8 text-sm">The BSP transaction has been successfully recorded in the IATA Financial Gateway.</p>
+                            <button onClick={() => window.location.href='/'} className="w-full py-4 aix-gradient text-white font-black uppercase tracking-widest rounded-xl hover:opacity-90 transition-all shadow-lg">
+                                Back to Scenarios
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
 
             return (
-                <div className="min-h-screen pb-20">
-                    <div className="aix-gradient h-64 flex flex-col items-center justify-center text-white px-6">
-                        <img src="./airindiaexpress.png" className="h-12 mb-6 brightness-0 invert" />
-                        <h1 className="text-4xl font-extrabold tracking-tight">IFG / BSP Demo Portal</h1>
-                        <p className="mt-2 opacity-90 font-medium italic text-orange-100">Select a payment scenario to initiate the Juspay Checkout</p>
+                <div className="min-h-screen flex flex-col">
+                    <Header />
+
+                    {/* Banner Section */}
+                    <div className="aix-gradient py-16 px-6 text-center text-white relative overflow-hidden">
+                        <div className="relative z-10 max-w-4xl mx-auto">
+                            <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">IATA Financial Gateway Demo</h1>
+                            <p className="text-lg opacity-90 font-medium max-w-2xl mx-auto">
+                                Test Air India Express BSP (Billing and Settlement Plan) forms of payment across various booking scenarios.
+                            </p>
+                        </div>
+                        {/* Decorative Circle */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
                     </div>
 
-                    <div className="max-w-6xl mx-auto -mt-10 px-6">
+                    {/* Scenario Grid */}
+                    <div className="max-w-7xl mx-auto w-full px-6 -mt-8 pb-20">
                         {Object.entries(SCENARIOS).map(([category, items]) => (
-                            <div key={category} className="mb-12">
+                            <div key={category} className="mb-14 animate-in">
                                 <div className="flex items-center mb-6">
-                                    <h2 className="text-xl font-bold text-gray-800 mr-4">{category}</h2>
-                                    <div className="flex-1 h-px bg-gray-200"></div>
+                                    <h2 className="text-xl font-black text-gray-800 uppercase tracking-tighter italic mr-4">{category}</h2>
+                                    <div className="flex-1 h-0.5 bg-gray-200"></div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {items.map(s => (
                                         <div 
                                             key={s.id} 
                                             onClick={() => !loading && triggerScenario(s)}
-                                            className="scenario-card bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-xl"
+                                            className="scenario-card bg-white p-7 rounded-2xl shadow-sm border border-gray-100 cursor-pointer"
                                         >
-                                            <div className="flex justify-between items-start mb-3">
-                                                <h3 className="font-bold text-gray-900 leading-tight pr-2">{s.label}</h3>
-                                                <span className="text-xs font-bold bg-orange-50 text-orange-700 px-2 py-1 rounded uppercase">
-                                                    {s.currency}
-                                                </span>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="bg-orange-50 text-orange-700 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">
+                                                    {s.currency} {s.amount}
+                                                </div>
+                                                <div className="text-[#E31837] text-xl">→</div>
                                             </div>
-                                            <p className="text-sm text-gray-500 mb-4 h-10">{s.desc}</p>
-                                            <div className="flex justify-between items-center text-sm">
-                                                <span className="font-mono font-bold text-[#E31837]">{s.amount}</span>
-                                                <span className="text-[#E31837] font-bold group-hover:underline">Execute &rarr;</span>
-                                            </div>
+                                            <h3 className="font-extrabold text-gray-900 text-lg mb-2 leading-tight">{s.label}</h3>
+                                            <p className="text-xs text-gray-500 font-medium leading-relaxed">{s.desc}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -116,9 +178,9 @@
                     </div>
 
                     {loading && (
-                        <div className="fixed inset-0 bg-white/90 backdrop-blur-md z-50 flex flex-col items-center justify-center">
-                            <div className="w-16 h-16 border-4 border-[#E31837] border-t-transparent rounded-full animate-spin mb-4"></div>
-                            <p className="font-bold text-gray-700 animate-pulse">Initializing IFG Secure Session...</p>
+                        <div className="fixed inset-0 bg-white/90 backdrop-blur-md z-[100] flex flex-col items-center justify-center">
+                            <div className="w-16 h-16 border-4 border-[#E31837] border-t-transparent rounded-full animate-spin mb-6"></div>
+                            <p className="font-black text-gray-800 uppercase tracking-widest animate-pulse text-sm">Securing IFG Connection...</p>
                         </div>
                     )}
                 </div>
