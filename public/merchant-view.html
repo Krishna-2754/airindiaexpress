@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vueling Trip Summary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Nunito Sans', sans-serif; /* Vueling uses rounded/friendly sans-serifs */
+            background-color: #ffffff; 
+            color: #333;
+            margin: 0; 
+            overflow: hidden; 
+        }
+        
+        /* Vueling Branding */
+        .text-vueling-dark { color: #4d4d4d; } 
+        .bg-vueling-yellow { background-color: #FECB00; }
+        .border-vueling-yellow { border-color: #FECB00; }
+        
+        .bg-card-header { background-color: #f4f4f4; }
+        
+        /* IMPROVED FLIGHT PATH */
+        .flight-path-container {
+            position: relative;
+            width: 100%;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .flight-line {
+            height: 2px;
+            width: 100%;
+            /* Gradient changed to gray for Vueling */
+            background-image: linear-gradient(to right, #4d4d4d 50%, transparent 50%);
+            background-size: 8px 100%;
+            opacity: 0.3;
+        }
+
+        .plane-icon {
+            position: absolute;
+            color: #4d4d4d; 
+            background: #ffffff; 
+            padding: 0 6px;
+            font-size: 18px; 
+            transform: rotate(90deg);
+        }
+
+        .dot {
+            height: 8px;
+            width: 8px;
+            background-color: #ffffff;
+            border: 2px solid #4d4d4d;
+            border-radius: 50%;
+            position: absolute;
+        }
+        .dot-start { left: 0; }
+        .dot-end { right: 0; background-color: #4d4d4d; }
+    </style>
+</head>
+<body class="px-4 pt-4 pb-0 w-full max-w-[400px] mx-auto select-none">
+
+    <h2 class="text-vueling-dark text-xl font-extrabold tracking-tight mb-4 text-center">Trip Summary</h2>
+
+    <div class="bg-white border-l-4 border-vueling-yellow shadow-sm p-3 mb-5 border-y border-r border-gray-100 flex justify-between items-center">
+        <span class="font-bold text-sm text-gray-600 uppercase tracking-wide">1 Adult</span>
+        <span class="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded">Confirmed</span>
+    </div>
+
+    <h3 class="text-vueling-dark text-sm font-bold mb-2 uppercase tracking-wide opacity-80">Flight Details</h3>
+
+    <div class="bg-white shadow-lg border border-gray-200 mb-4 rounded-lg overflow-hidden">
+        
+        <div class="bg-card-header px-5 py-3 flex justify-between items-center border-b border-gray-200">
+            <span class="font-bold text-vueling-dark text-xs uppercase">Outbound</span>
+            <span class="font-bold text-vueling-dark text-xs" id="flight-no">VY ...</span>
+        </div>
+
+        <div class="p-5">
+            <span class="inline-block bg-vueling-yellow text-gray-900 text-[11px] font-extrabold px-3 py-1 uppercase mb-5 rounded-full">
+                Optima Fare
+            </span>
+
+            <div class="flex items-center justify-between text-vueling-dark mb-6">
+                <div class="text-left w-1/3">
+                    <div class="text-3xl font-light" id="origin-code">BCN</div>
+                    <div class="text-[10px] font-bold uppercase text-gray-400 truncate" id="origin-city">Barcelona</div>
+                    <div class="text-lg font-bold mt-1" id="dep-time">--:--</div>
+                </div>
+
+                <div class="flex-1 flex flex-col items-center px-2">
+                    <div class="text-gray-400 text-[10px] font-bold mb-1" id="duration">--h --m</div>
+                    
+                    <div class="flight-path-container">
+                        <div class="dot dot-start"></div>
+                        <div class="flight-line"></div>
+                        <div class="dot dot-end"></div>
+                        <span class="plane-icon">✈</span>
+                    </div>
+
+                    <div class="text-gray-400 text-[10px] font-bold mt-1">Direct</div>
+                </div>
+
+                <div class="text-right w-1/3">
+                    <div class="text-3xl font-light" id="dest-code">ORY</div>
+                    <div class="text-[10px] font-bold uppercase text-gray-400 truncate" id="dest-city">Paris</div>
+                    <div class="text-lg font-bold mt-1" id="arr-time">--:--</div>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
+                <div class="text-gray-500 font-bold text-[11px]">
+                    <span id="full-date">...</span>
+                </div>
+                <div class="text-gray-500 font-bold text-[10px] uppercase flex items-center gap-1">
+                    Checked Bag: <span id="baggage-checkin" class="text-gray-900 bg-vueling-yellow px-1 rounded">25KG</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 p-4 shadow-sm rounded-lg mb-0">
+        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Passenger</div>
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-vueling-yellow text-gray-800 flex items-center justify-center text-xs font-bold border border-gray-200">VK</div>
+                <div>
+                    <div class="font-bold text-vueling-dark text-sm">Virat Kohli</div>
+                    <div class="text-xs text-gray-500">Vueling Club</div>
+                </div>
+            </div>
+            <span class="text-gray-400 font-bold text-xs">ADT</span>
+        </div>
+    </div>
+
+    <script>
+        // ---------------------------------------------------------
+        // 1. VUELING AIRLINES DATA CONFIGURATION
+        // ---------------------------------------------------------
+        const CITY_NAMES = {
+            "BCN": "Barcelona", "MAD": "Madrid", "IBZ": "Ibiza", 
+            "SVQ": "Seville", "AGP": "Malaga", "VLC": "Valencia", 
+            "LHR": "London", "LGW": "London", "ORY": "Paris", "CDG": "Paris", 
+            "FCO": "Rome", "MXP": "Milan", "AMS": "Amsterdam", 
+            "LIS": "Lisbon", "PMI": "Palma", "TFN": "Tenerife"
+        };
+
+        const FLIGHT_DISPLAY_DETAILS = {
+            "BCN_MAD": { flightNo: "VY 1001, A320", depTime: "07:00", arrTime: "08:20", duration: "01h 20m", checkin: "25", hand: "10" },
+            "BCN_IBZ": { flightNo: "VY 3502, A320", depTime: "14:30", arrTime: "15:25", duration: "00h 55m", checkin: "20", hand: "10" },
+            "BCN_ORY": { flightNo: "VY 8004, A321", depTime: "09:10", arrTime: "11:05", duration: "01h 55m", checkin: "25", hand: "10" },
+            "BCN_LGW": { flightNo: "VY 7824, A320", depTime: "18:20", arrTime: "19:40", duration: "02h 20m", checkin: "25", hand: "10" },
+            "BCN_FCO": { flightNo: "VY 6102, A321", depTime: "12:45", arrTime: "14:30", duration: "01h 45m", checkin: "25", hand: "10" },
+            "MAD_BCN": { flightNo: "VY 1012, A320", depTime: "19:00", arrTime: "20:15", duration: "01h 15m", checkin: "25", hand: "10" },
+            "ORY_BCN": { flightNo: "VY 8005, A321", depTime: "16:00", arrTime: "17:40", duration: "01h 40m", checkin: "25", hand: "10" },
+            "FCO_BCN": { flightNo: "VY 6105, A321", depTime: "10:00", arrTime: "11:55", duration: "01h 55m", checkin: "25", hand: "10" },
+            "LGW_BCN": { flightNo: "VY 7825, A320", depTime: "20:30", arrTime: "23:45", duration: "02h 15m", checkin: "25", hand: "10" },
+            "AMS_BCN": { flightNo: "VY 8301, A320", depTime: "14:00", arrTime: "16:10", duration: "02h 10m", checkin: "25", hand: "10" }
+        };
+
+        // Default set to a common Vueling route (Barcelona -> Paris)
+        const DEFAULT_FLIGHT = { flightNo: "VY 8004, A320", depTime: "09:00", arrTime: "11:00", duration: "02h 00m", checkin: "25", hand: "10" };
+
+        // ---------------------------------------------------------
+        // 2. DOM MANIPULATION
+        // ---------------------------------------------------------
+        const params = new URLSearchParams(window.location.search);
+
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if(el && value) el.innerText = value;
+        }
+
+        // Date Parsing
+        const dateRaw = params.get('date');
+        if (dateRaw) {
+            const dateObj = new Date(dateRaw);
+            const dateStr = dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+            setText('full-date', dateStr);
+        } else {
+             // Fallback date if none provided
+             const today = new Date();
+             setText('full-date', today.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }));
+        }
+
+        // Route & Flight Logic (Defaulting to Vueling Hub BCN)
+        const from = params.get('fromCode') || "BCN";
+        const to = params.get('toCode') || "ORY";
+        const routeKey = `${from}_${to}`;
+        const flightInfo = FLIGHT_DISPLAY_DETAILS[routeKey] || DEFAULT_FLIGHT;
+
+        // Set Texts
+        setText('flight-no', flightInfo.flightNo);
+        
+        const fromCity = CITY_NAMES[from] || params.get('fromCity') || from;
+        const toCity = CITY_NAMES[to] || params.get('toCity') || to;
+
+        setText('origin-city', fromCity);
+        setText('dest-city', toCity);
+        setText('origin-code', from);
+        setText('dest-code', to);
+        setText('duration', flightInfo.duration);
+        
+        setText('dep-time', flightInfo.depTime);
+        setText('arr-time', flightInfo.arrTime);
+        
+        setText('baggage-checkin', `${flightInfo.checkin}KG`);
+
+        // ---------------------------------------------------------
+        // 3. AUTO-HEIGHT RESIZE LOGIC 
+        // ---------------------------------------------------------
+        function sendHeight() {
+            const height = document.body.scrollHeight;
+            window.parent.postMessage({ type: 'resize', height: height }, '*');
+        }
+
+        window.addEventListener('load', sendHeight);
+        window.addEventListener('resize', sendHeight);
+        const resizeObserver = new ResizeObserver(() => { sendHeight(); });
+        resizeObserver.observe(document.body);
+
+    </script>
+</body>
+</html>

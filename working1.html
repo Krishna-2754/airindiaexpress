@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Juspay Aero | Dynamic Airline Demo</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Ubuntu:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap');
+body { font-family: 'Inter', sans-serif; transition: all 0.3s ease; overflow-x: hidden; }
+.cebu-hero { background: url('https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&w=1600&q=80') center/cover; }
+.vueling-hero { background: url('https://static.vueling.com/corporativeCMS/media/51086/en-winter-sale-2025.jpg') center/cover; min-height: 550px; }
+.vueling-dots { background-image: radial-gradient(#ffdb00 1.5px, transparent 1.5px); background-size: 12px 12px; }
+.glass-launcher { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+.vueling-pill { border-radius: 50px; background: white; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+.animate-in { animation: fadeIn 0.6s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+.ticket-font { font-family: 'Space Mono', monospace; }
+/* Log Console */
+.log-container { font-family: 'Monaco', 'Consolas', monospace; }
+.log-entry { border-left: 2px solid #333; }
+.log-entry:hover { border-left-color: #00AEEF; background: rgba(255,255,255,0.03); }
+</style>
+</head>
+<body class="bg-[#0a1120] text-black">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const AIRLINE_CONFIGS = {
+cebu: { id: 'cebu', name: 'Cebu Pacific', logo: './cebu.png', primary: '#FFF000', accent: '#00AEEF', hero: 'cebu-hero', logoH: '85px', btnStyle: 'rounded-full font-black italic' },
+vueling: { id: 'vueling', name: 'Vueling', logo: './vueling.png', primary: '#ffdb00', accent: '#333333', hero: 'vueling-hero', logoH: '70px', btnStyle: 'rounded-full font-bold' }
+};
+
+// --- UPDATED DROPDOWNS TO MATCH PDF ROUTES ---
+const ORIGIN_OPTIONS = [ 
+    { code: "MNL", name: "Manila (MNL)" }, 
+    { code: "SIN", name: "Singapore (SIN)" }, 
+    { code: "RUH", name: "Riyadh (RUH)" }, 
+    { code: "MEL", name: "Melbourne (MEL)" }
+];
+const DESTINATION_OPTIONS = [ 
+    { code: "SUG", name: "Surigao (SUG)" }, 
+    { code: "MNL", name: "Manila (MNL)" }, 
+    { code: "LAO", name: "Laoag (LAO)" }, 
+    { code: "KUL", name: "Kuala Lumpur (KUL)" }, 
+    { code: "SIN", name: "Singapore (SIN)" }, 
+    { code: "CEB", name: "Cebu (CEB)" }
+];
+
+const CURRENCY_OPTIONS = ["INR", "USD", "SGD", "SAR"];
+const LANGUAGE_OPTIONS = [ { code: "en", name: "English" }, { code: "ja", name: "Japanese" }, { code: "ko", name: "Korean" }, { code: "zh", name: "Mandarin" } ];
+
+function App() {
+const [view, setView] = useState('launcher');
+const [airline, setAirline] = useState(null);
+const [navToken, setNavToken] = useState("");
+const [isSearched, setIsSearched] = useState(false);
+const [loadingStage, setLoadingStage] = useState("");
+const [pnr, setPnr] = useState("");
+const [userType, setUserType] = useState("GUEST");
+const [language, setLanguage] = useState("en"); 
+const [apiLogs, setApiLogs] = useState(() => {
+const saved = sessionStorage.getItem('flight_demo_logs');
+return saved ? JSON.parse(saved) : [];
+});
+
+// Default to MNL -> SUG (Page 1 of PDF)
+const [search, setSearch] = useState({ from: 'MNL', to: 'SUG', date: '2025-12-30', currency: 'USD' });
+
+const logApiCall = (endpoint, method, req, res) => {
+const newLog = { id: Date.now(), timestamp: new Date().toLocaleTimeString(), endpoint, method, request: req, response: res };
+setApiLogs(prevLogs => {
+const updatedLogs = [...prevLogs, newLog];
+sessionStorage.setItem('flight_demo_logs', JSON.stringify(updatedLogs));
+return updatedLogs;
+});
+};
+
+const startFresh = (config) => {
+sessionStorage.removeItem('flight_demo_logs');
+setApiLogs([]);
+setAirline(config);
+setView('airline');
+setLoadingStage("Authenticating...");
+fetch('/api/nsk/v2/token', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+.then(res => res.json())
+.then(data => { logApiCall('/api/nsk/v2/token', 'POST', {}, data); setNavToken(data.data.token); setLoadingStage(""); });
+};
+
+useEffect(() => {
+const params = new URLSearchParams(window.location.search);
+if (params.get('status') === 'success') {
+const pnrFromUrl = params.get('pnr') || "PENDING";
+setPnr(pnrFromUrl);
+handleSuccessChain(params.get('airline'), pnrFromUrl);
+}
+}, []);
+
+const handleSuccessChain = async (name, confirmedPnr) => {
+const matched = Object.values(AIRLINE_CONFIGS).find(a => a.name === name);
+setAirline(matched || AIRLINE_CONFIGS.cebu);
+setView('airline');
+setLoadingStage("Syncing Booking...");
+await fetch('/api/nsk/v3/booking', { method: 'POST' });
+await fetch('/api/nsk/v5/booking/payments', { method: 'POST' });
+await fetch('/api/nsk/v3/booking', { method: 'PUT' });
+setView('success');
+setLoadingStage("");
+};
+
+const handleSearch = async () => {
+setLoadingStage("Searching...");
+await fetch('/api/nsk/v4/availability/search/simple', { method: 'POST' });
+setIsSearched(true);
+setLoadingStage("");
+};
+
+const handlePay = async () => {
+setLoadingStage("Securing Session...");
+await fetch('/api/nsk/v4/trip/sell', { method: 'POST' });
+const sessionReq = {
+amount: 2000,
+currency: search.currency,
+navToken,
+airlineName: airline.name,
+searchData: search,
+userType: userType,
+language: language 
+};
+const res = await fetch('/create-session', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(sessionReq)
+});
+const data = await res.json();
+logApiCall('https://sandbox.juspay.in/session', 'POST', data.sentPayload, { payment_link: data.url });
+window.location.href = data.url;
+};
+
+if (view === 'launcher') return (
+<div className="h-screen flex flex-col items-center justify-center p-6 text-white bg-slate-950">
+<h1 className="text-6xl font-black italic mb-16 text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-400">JUSPAY AERO</h1>
+<div className="flex gap-10">
+{Object.values(AIRLINE_CONFIGS).map(a => (
+<button key={a.id} onClick={() => startFresh(a)} className="glass-launcher p-12 rounded-[2.5rem] hover:bg-white/10 flex flex-col items-center group transition-all">
+<img src={a.logo} style={{ height: a.logoH }} className="mb-8" />
+<div className="px-6 py-2 rounded-full border border-blue-500/30 text-[10px] font-bold uppercase text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-all">Launch Demo</div>
+</button>
+))}
+</div>
+</div>
+);
+
+if (view === 'success') return (
+<div className="min-h-screen flex flex-col items-center bg-slate-50 text-center animate-in pb-20 pt-16 px-4">
+<div className="mb-8"><div className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center text-4xl shadow-xl mx-auto mb-4">✓</div><h1 className="text-3xl font-black text-slate-900 uppercase">Booking Confirmed</h1><p className="text-slate-500 font-medium">Your itinerary has been sent to your email.</p></div>
+<div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row mb-16 relative">
+<div className="flex-1 p-8 md:p-10 text-left border-r-2 border-dashed border-slate-200 relative"><div className="flex justify-between items-center mb-8"><img src={airline?.logo} style={{height: '30px'}} /><span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Economy</span></div><div className="flex justify-between items-end mb-8"><div><div className="text-5xl font-black text-slate-900 mb-1">{search.from}</div><div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Departure</div></div><div className="mb-3 text-slate-300 text-2xl">✈</div><div className="text-right"><div className="text-5xl font-black text-slate-900 mb-1">{search.to}</div><div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Arrival</div></div></div></div>
+<div className="w-full md:w-80 bg-slate-900 text-white p-8 flex flex-col items-center justify-center text-center relative"><div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">Booking Reference</div><div className="ticket-font text-5xl font-bold tracking-wider mb-8 text-white">{pnr}</div><div className="bg-white p-2 rounded-xl inline-block shadow-lg"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${pnr}`} className="w-32 h-32" alt="Boarding QR" /></div></div>
+</div>
+<div className="w-full max-w-4xl px-2 text-left"><h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Transaction API Logs</h3><div className="bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl log-container border border-slate-800"><div className="p-4 overflow-y-auto max-h-[400px] text-xs space-y-6">{apiLogs.map((log, index) => (<div key={log.id} className="log-entry pl-4 animate-in" style={{animationDelay: `${index * 100}ms`}}><div className="flex items-center gap-3 mb-2"><span className="text-slate-500">[{log.timestamp}]</span><span className={`font-bold px-2 py-0.5 rounded ${log.method === 'POST' ? 'bg-blue-900 text-blue-300' : 'bg-orange-900 text-orange-300'}`}>{log.method}</span><span className="text-green-400 font-mono">{log.endpoint}</span></div><div className="grid grid-cols-2 gap-4"><div><div className="text-slate-500 mb-1 uppercase text-[10px]">Request Payload</div><pre className="text-slate-300 bg-black/30 p-2 rounded overflow-x-auto border border-white/5">{JSON.stringify(log.request, null, 2)}</pre></div><div><div className="text-slate-500 mb-1 uppercase text-[10px]">Response Data</div><pre className="text-blue-200 bg-blue-900/10 p-2 rounded overflow-x-auto border border-blue-500/20">{JSON.stringify(log.response, null, 2)}</pre></div></div></div>))}</div></div></div>
+</div>
+);
+
+return (
+<div className={`min-h-screen ${airline.id === 'vueling' ? 'vueling-dots font-["Ubuntu"]' : 'bg-[#f4f7f9]'} animate-in`}>
+<header className="px-10 py-6 flex items-center justify-between bg-white border-b sticky top-0 z-50 shadow-sm" style={airline.id === 'cebu' ? {borderBottom: `4px solid ${airline.accent}`, backgroundColor: airline.primary} : {}}>
+<img src={airline.logo} style={{ height: airline.logoH }} className="cursor-pointer" onClick={() => window.location.reload()} />
+<div className="flex items-center gap-4">
+{loadingStage && <span className="text-[10px] font-bold text-blue-600 animate-pulse uppercase tracking-widest">{loadingStage}</span>}
+<div className="font-bold text-sm text-black">{userType === 'GUEST' ? '👤 Guest' : (userType === 'AGENT' ? '💼 Agent' : '🎖 Member')}</div>
+</div>
+</header>
+
+<div className={`${airline.hero} py-24 flex flex-col items-center`}>
+{airline.id === 'cebu' && <h1 className="text-8xl font-black italic text-white mb-10 drop-shadow-2xl uppercase tracking-tighter">TRAVEL NOW</h1>}
+<div className={airline.id === 'vueling' ? "vueling-pill w-full max-w-7xl flex p-2 mt-20" : "bg-white p-10 rounded-[2rem] shadow-2xl w-full max-w-7xl mt-10"}>
+<div className="flex flex-col gap-4 w-full text-black">
+<div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-end">
+<div className="px-4 border-r border-slate-100">
+<label className="text-[10px] font-bold text-gray-400 block mb-1">FROM</label>
+<select className="font-bold w-full focus:outline-none bg-transparent" value={search.from} onChange={(e) => setSearch({...search, from: e.target.value})}>
+{ORIGIN_OPTIONS.map(opt => <option key={opt.code} value={opt.code}>{opt.name}</option>)}
+</select>
+</div>
+<div className="px-4 border-r border-slate-100">
+<label className="text-[10px] font-bold text-gray-400 block mb-1">TO</label>
+<select className="font-bold w-full focus:outline-none bg-transparent" value={search.to} onChange={(e) => setSearch({...search, to: e.target.value})}>
+{DESTINATION_OPTIONS.map(opt => <option key={opt.code} value={opt.code}>{opt.name}</option>)}
+</select>
+</div>
+<div className="px-4 border-r border-slate-100">
+<label className="text-[10px] font-bold text-gray-400 block mb-1">DATE</label>
+<input type="date" className="font-bold w-full focus:outline-none bg-transparent text-sm" value={search.date} onChange={(e) => setSearch({...search, date: e.target.value})} />
+</div>
+<div className="px-4 border-r border-slate-100">
+<label className="text-[10px] font-bold text-gray-400 block mb-1">USER TYPE</label>
+<select className="font-bold w-full focus:outline-none bg-transparent" value={userType} onChange={(e) => setUserType(e.target.value)}>
+<option value="GUEST">Guest</option>
+<option value="MEMBER">Member</option>
+<option value="AGENT">Agent</option>
+</select>
+</div>
+<div className="px-4 border-r border-slate-100">
+<label className="text-[10px] font-bold text-gray-400 block mb-1">CURRENCY</label>
+<select className="font-bold w-full focus:outline-none bg-transparent" value={search.currency} onChange={(e) => setSearch({...search, currency: e.target.value})}>
+{CURRENCY_OPTIONS.map(curr => <option key={curr} value={curr}>{curr}</option>)}
+</select>
+</div>
+<div className="px-4 border-r border-slate-100">
+<label className="text-[10px] font-bold text-gray-400 block mb-1">LANGUAGE</label>
+<select className="font-bold w-full focus:outline-none bg-transparent" value={language} onChange={(e) => setLanguage(e.target.value)}>
+{LANGUAGE_OPTIONS.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+</select>
+</div>
+<button onClick={handleSearch} className={`py-4 text-white font-bold uppercase transition-all shadow-xl active:scale-95 ${airline.btnStyle}`} style={{backgroundColor: airline.id === 'cebu' ? '#00AEEF' : '#ffdb00', color: airline.id === 'vueling' ? '#000' : '#fff'}}>Search</button>
+</div>
+</div>
+</div>
+</div>
+
+{isSearched && (
+<div className="max-w-5xl mx-auto py-20 px-6 animate-in">
+<div className="bg-white rounded-[2.5rem] shadow-2xl p-14 flex items-center justify-between text-black border border-slate-100">
+<div className="flex flex-col">
+<div className="text-4xl font-black italic tracking-tighter">{search.from} <span className="text-slate-200">✈</span> {search.to}</div>
+<div className="text-slate-400 text-xs mt-2 font-bold uppercase tracking-widest">{new Date(search.date).toDateString()} | Non-Stop</div>
+</div>
+<div className="text-right">
+<div className="text-5xl font-black mb-6 tracking-tighter italic">{search.currency === 'INR' ? '₹' : search.currency} {
+    // Dynamic display logic based on PDF routes
+    (search.from === 'MNL' && search.to === 'SUG') ? '13,949' : 
+    (search.from === 'SIN' && search.to === 'MNL') ? '64,064' :
+    (search.from === 'MNL' && search.to === 'LAO') ? '13,947' :
+    (search.from === 'MNL' && search.to === 'KUL') ? '45,974' :
+    (search.from === 'MNL' && search.to === 'SIN') ? '59,640' :
+    (search.from === 'RUH' && search.to === 'MNL') ? '59,640' :
+    (search.from === 'MEL' && search.to === 'CEB') ? '76,761' :
+    '2,000'
+}</div>
+<button onClick={handlePay} className={`px-16 py-4 uppercase font-black shadow-2xl transition-all hover:scale-105 ${airline.btnStyle}`} style={{ backgroundColor: airline.id === 'cebu' ? '#FFF000' : '#ffdb00', color: '#000' }}>SELECT & PAY</button>
+</div>
+</div>
+</div>
+)}
+</div>
+);
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
