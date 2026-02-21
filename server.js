@@ -74,36 +74,86 @@ app.post('/create-session', async (req, res) => {
             currency: "USD",
             mti: "{}" 
         };
+        const merchantViewUrl = `${protocol}://${host}/merchant-view?fromCity=Delhi&toCity=Mumbai&fromCode=DEL&toCode=BOM&date=2026-02-15&depTime=23:30&arrTime=01:55&duration=02h+25m&flightNo=IX+519&pax=1&baggageCheckin=15&baggageHand=7`;
 
         const payload = {
             "order_id": `AIX-IFG-${Date.now()}`,
-            "amount": dynamicData.amount, // Updated dynamically
+            "amount": dynamicData.amount,
             "currency": dynamicData.currency,
             "customer_id": "IFG_DEMO_USER",
             "customer_email": "bsp-test@airindiaexpress.in",
             "customer_phone": "9999999999",
+            "mobile_country_code": "91",
+            "payment_page_client_id": "airindiademo",
             "action": "paymentPage",
             "return_url": `${protocol}://${host}/?status=success&scenario=${scenario.id}`,
-            "payment_page_client_id": "airindiademo",
-            "merchant_transient_info": dynamicData.mti, // Updated dynamically
+            "merchant_view_url": merchantViewUrl,
+            "metadata.JUSPAY:gateway_reference_id": "FLIGHT",
+            "udf3": "RCTT",
+            "udf4": "Arora",
+            "udf10": "IFG_DEMO_V1",
+            "metadata.NAVITAIRE:session_expiry_in_sec": "900",
+            "disable_merchant_integrity_check": true,
+            "options.get_client_auth_token": true,
             "payment_filter": {
                 "options": [
-                    { "enable": "true", "paymentMethodType": "MERCHANT_CONTAINER", "paymentMethods": ["BSP"] }
+                    { "enable": "true", "paymentMethodType": "CARD" },
+                    { "enable": "true", "paymentMethodType": "UPI" },
+                    {
+                        "enable": "true",
+                        "paymentMethodType": "MERCHANT_CONTAINER",
+                        "paymentMethods": ["BSP", "HOLD_AND_PAY", "NAV_AGENT_WALLET"]
+                    }
                 ],
                 "allowDefaultOptions": true
             },
-            "disable_merchant_integrity_check": true
+            "merchant_transient_info": dynamicData.mti,
+            "metadata.webhook_url": "https://api-uat-skyplus.goindigo.in/postpayment/v1/payment/webhook",
+            "metadata.expiryInMins": "15"
         };
 
         const response = await axios.post('https://sandbox.juspay.in/session', payload, {
-            headers: { 'Authorization': JUSPAY_AUTH, 'Content-Type': 'application/json' }
+            headers: { 
+                'Authorization': JUSPAY_AUTH, 
+                'Content-Type': 'application/json' 
+            }
         });
 
         res.json({ url: response.data.payment_links.web });
     } catch (error) {
-        console.error("❌ ERROR:", error.response?.data || error.message);
+        console.error("❌ IFG SESSION ERROR:", error.response?.data || error.message);
         res.status(500).json({ error: "IFG Session Creation Failed" });
     }
+
+    //     const payload = {
+    //         "order_id": `AIX-IFG-${Date.now()}`,
+    //         "amount": dynamicData.amount, // Updated dynamically
+    //         "currency": dynamicData.currency,
+    //         "customer_id": "IFG_DEMO_USER",
+    //         "customer_email": "bsp-test@airindiaexpress.in",
+    //         "customer_phone": "9999999999",
+    //         "action": "paymentPage",
+    //         "return_url": `${protocol}://${host}/?status=success&scenario=${scenario.id}`,
+    //         "payment_page_client_id": "airindiademo",
+    //         "merchant_transient_info": dynamicData.mti, // Updated dynamically
+    //         "payment_filter": {
+    //             "options": [
+    //                 { "enable": "true", "paymentMethodType": "MERCHANT_CONTAINER", "paymentMethods": ["BSP"] }
+    //             ],
+    //             "allowDefaultOptions": true
+    //         },
+    //         "disable_merchant_integrity_check": true
+    //     };
+
+    //     const response = await axios.post('https://sandbox.juspay.in/session', payload, {
+    //         headers: { 'Authorization': JUSPAY_AUTH, 'Content-Type': 'application/json' }
+    //     });
+
+    //     res.json({ url: response.data.payment_links.web });
+    // } catch (error) {
+    //     console.error("❌ ERROR:", error.response?.data || error.message);
+    //     res.status(500).json({ error: "IFG Session Creation Failed" });
+    // }
 });
 
 const PORT = process.env.PORT || 3001;
