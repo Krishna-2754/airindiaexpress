@@ -105,3 +105,6 @@ app.post('/create-session', async (req, res) => {
         res.status(500).json({ error: "IFG Session Creation Failed" });
     }
 });
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`🚀 Air India Express IFG Demo running on port ${PORT}`));
